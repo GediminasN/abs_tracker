@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Super Abs Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg: #14171A;
+    --surface: #1E2226;
+    --surface-raised: #23282D;
+    --line: #2C3136;
+    --line-soft: #24282C;
+    --text: #EDEBE4;
+    --text-muted: #8B9198;
+    --text-faint: #575C61;
+    --amber: #E8A33D;
+    --amber-dim: #6B5326;
+    --ember: #D64933;
+    --sage: #6FA787;
+    --sage-dim: #2C3B33;
+    --radius: 10px;
+  }
+
+  *{ box-sizing: border-box; margin:0; padding:0; }
+  html,body{ background: var(--bg); color: var(--text); }
+  body{
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 80px;
+  }
+  ::selection{ background: var(--amber-dim); color: var(--text); }
+
+  .wrap{ max-width: 720px; margin: 0 auto; padding: 28px 20px 40px; }
+
+  /* ---------- HEADER ---------- */
+  header{ margin-bottom: 22px; }
+  .eyebrow{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 6px;
+  }
+  h1{
+    font-family: 'Oswald', sans-serif;
+    font-weight: 700;
+    font-size: clamp(32px, 8vw, 44px);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  h1 span{ color: var(--amber); }
+  .sub{
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 6px;
+  }
+
+  /* ---------- STAT ROW ---------- */
+  .stats{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 20px 0 18px;
+  }
+  .stat{
+    background: var(--surface);
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .stat .num{
+    font-family: 'Oswald', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1;
+  }
+  .stat.streak .num{ color: var(--ember); }
+  .stat.done .num{ color: var(--sage); }
+  .stat .lbl{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-top: 4px;
+  }
+
+  /* ---------- TENSION TRACK (signature element) ---------- */
+  .track-label{
+    display:flex; justify-content: space-between; align-items:baseline;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing:0.1em; text-transform:uppercase;
+    color: var(--text-faint); margin-bottom:6px;
+  }
+  .track{
+    display: flex;
+    gap: 3px;
+    height: 34px;
+    margin-bottom: 26px;
+  }
+  .tick{
+    flex: 1;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    position: relative;
+    cursor: pointer;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .tick:hover{ transform: translateY(-2px); }
+  .tick.done{
+    background: var(--amber);
+    border-color: var(--amber);
+  }
+  .tick.today{
+    border-color: var(--ember);
+    box-shadow: 0 0 0 1px var(--ember);
+  }
+  .tick.today::after{
+    content:'';
+    position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    width:4px; height:4px; border-radius:50%;
+    background: var(--ember);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ opacity:1; } 50%{ opacity:.25; }
+  }
+
+  /* ---------- BANNER ---------- */
+  .banner{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius);
+    padding: 13px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .banner button{
+    background:none; border:none; color: var(--text-faint);
+    font-size: 13px; cursor: pointer; flex-shrink:0;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .banner button:hover{ color: var(--text); }
+  .banner.hidden{ display:none; }
+
+  /* ---------- TODAY CARD ---------- */
+  .today-card{
+    background: var(--surface);
+    border: 1px solid var(--amber-dim);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+  .today-card .date-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing:0.08em; text-transform:uppercase;
+    color: var(--amber); margin-bottom: 2px;
+  }
+  .today-card h2{
+    font-family:'Oswald', sans-serif;
+    font-size: 22px; font-weight:600; text-transform:uppercase;
+    margin-bottom: 16px;
+  }
+  .today-card h2 .d{ color: var(--text-muted); font-weight: 400; }
+  .today-kind{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--amber);
+    margin-top: -10px;
+    margin-bottom: 16px;
+  }
+
+  .ex-row{
+    display:flex; align-items:center; gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .ex-row:first-of-type{ border-top:none; }
+  .ex-name{ flex: 1; font-size: 14.5px; }
+  .ex-input{
+    width: 64px;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    text-align: center;
+    padding: 6px 4px;
+  }
+  .ex-input:focus{ outline: none; border-color: var(--amber); }
+  .ex-hint{ font-size: 11px; color: var(--text-faint); width: 56px; }
+
+  .mark-done{
+    width: 100%;
+    margin-top: 16px;
+    padding: 13px;
+    border-radius: 8px;
+    border: none;
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: var(--amber);
+    color: #1A1400;
+    transition: background .15s ease, opacity .15s ease;
+  }
+  .mark-done.is-done{
+    background: var(--sage-dim);
+    color: var(--sage);
+    border: 1px solid var(--sage);
+  }
+  .mark-done:active{ opacity: .8; }
+
+  textarea.note{
+    width: 100%;
+    margin-top: 14px;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 10px 12px;
+    resize: vertical;
+    min-height: 40px;
+  }
+  textarea.note::placeholder{ color: var(--text-faint); }
+  textarea.note:focus{ outline:none; border-color: var(--amber-dim); }
+
+  /* ---------- SECTION HEADER ---------- */
+  .section-head{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing:0.14em; text-transform:uppercase;
+    color: var(--text-faint);
+    margin: 30px 0 12px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .section-head::after{
+    content:''; flex:1; height:1px; background: var(--line);
+  }
+
+  /* ---------- DAY LIST ---------- */
+  .day{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .day.is-done{ border-color: var(--sage-dim); }
+  .day.is-today{ border-color: var(--amber-dim); }
+  .day-head{
+    display:flex; align-items:center; gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .day-num{
+    font-family:'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--text-muted);
+    width: 46px;
+    flex-shrink: 0;
+  }
+  .day.is-done .day-num{ color: var(--sage); }
+  .day-date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-faint);
+    width: 64px;
+    flex-shrink: 0;
+  }
+  .day-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--text-faint);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+  }
+  .day-summary{
+    flex: 1;
+    font-size: 12.5px;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .day-check{
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--line);
+    flex-shrink: 0;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 12px;
+    color: transparent;
+    transition: all .15s ease;
+  }
+  .day.is-done .day-check{
+    background: var(--sage);
+    border-color: var(--sage);
+    color: #0F1A14;
+  }
+  .day-body{
+    display: none;
+    padding: 0 14px 16px;
+  }
+  .day.expanded .day-body{ display: block; }
+  .day.expanded .day-head{ padding-bottom: 6px; }
+
+  footer{
+    max-width: 720px; margin: 30px auto 0; padding: 0 20px;
+    display:flex; justify-content: center; gap: 10px; flex-wrap: wrap;
+  }
+  .reset-btn{
+    background:none;
+    border: 1px solid var(--line);
+    color: var(--text-faint);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    padding: 9px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .reset-btn:hover{ color: var(--ember); border-color: var(--ember); }
+  #syncGetBtn:hover, #syncLoadBtn:hover{ color: var(--amber); border-color: var(--amber-dim); }
+
+  .sync-panel{
+    position: fixed;
+    inset: 0;
+    background: rgba(10,11,12,0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 50;
+  }
+  .sync-panel.hidden{ display: none; }
+  .sync-panel-inner{
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    max-width: 440px;
+    width: 100%;
+  }
+  .sync-title{
+    font-family:'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 6px;
+  }
+  .sync-desc{
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+  .sync-text{
+    width: 100%;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 10px 12px;
+    resize: vertical;
+    word-break: break-all;
+  }
+  .sync-text:focus{ outline: none; border-color: var(--amber-dim); }
+  .sync-actions{
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .sync-btn{
+    flex: 1;
+    padding: 11px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: none;
+    color: var(--text-muted);
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .sync-btn.primary{
+    background: var(--amber);
+    color: #1A1400;
+    border-color: var(--amber);
+  }
+  .sync-status{
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--sage);
+    min-height: 16px;
+  }
+  .sync-status.error{ color: var(--ember); }
+
+  @media (prefers-reduced-motion: reduce){
+    .tick.today::after{ animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Darebee · 30-day challenge</div>
+    <h1>Super <span>Abs</span></h1>
+    <div class="sub">Elbow plank hold one day, leg raises + side bridges the next. Thirty days.</div>
+  </header>
+
+  <div class="stats">
+    <div class="stat done">
+      <div class="num" id="statDone">0</div>
+      <div class="lbl">Days done</div>
+    </div>
+    <div class="stat streak">
+      <div class="num" id="statStreak">0</div>
+      <div class="lbl">Streak</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statToday">1</div>
+      <div class="lbl">Today is day</div>
+    </div>
+  </div>
+
+  <div class="track-label">
+    <span>Progress</span>
+    <span id="trackLabel">0 / 30</span>
+  </div>
+  <div class="track" id="track"></div>
+
+  <div class="banner" id="banner">
+    <div>Odd days (1, 3, 5...) are an elbow plank hold, ramping from 50s to 120s. Even days (2, 4, 6...) are leg raises + side bridges, ramping from 20 to 35 reps. Tap any number below if you want to fine-tune a specific day.</div>
+    <button id="dismissBanner">✕</button>
+  </div>
+
+  <div id="todaySlot"></div>
+
+  <div class="section-head">All 30 days</div>
+  <div id="dayList"></div>
+
+  <footer>
+    <button class="reset-btn" id="resetBtn">Reset all progress</button>
+    <button class="reset-btn" id="syncGetBtn">Copy sync code</button>
+    <button class="reset-btn" id="syncLoadBtn">Load sync code</button>
+  </footer>
+
+  <div class="sync-panel hidden" id="syncPanel">
+    <div class="sync-panel-inner">
+      <div class="sync-title" id="syncTitle">Sync code</div>
+      <div class="sync-desc" id="syncDesc">Copy this code, then paste it into "Load sync code" on your other device.</div>
+      <textarea class="sync-text" id="syncText" rows="4" readonly></textarea>
+      <div class="sync-actions">
+        <button class="sync-btn primary" id="syncActionBtn">Copy to clipboard</button>
+        <button class="sync-btn" id="syncCloseBtn">Close</button>
+      </div>
+      <div class="sync-status" id="syncStatus"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const START_DATE = new Date(2026, 7, 16); // Aug 16, 2026 = Day 1
+const TOTAL_DAYS = 30;
+const A_OCCURRENCES = 15; // odd days: 1,3,5...29
+const B_OCCURRENCES = 15; // even days: 2,4,6...30
+const STORAGE_KEY = 'super-abs-state-v4';
+
+// Day type: odd days (1,3,5...) = plank day, even days (2,4,6...) = reps day
+function dayType(dayIndex){
+  return (dayIndex % 2 === 1) ? 'B' : 'A';
+}
+function occurrenceIndex(dayIndex){
+  // 1-based position of this day within its own day-type sequence
+  return Math.ceil(dayIndex / 2);
+}
+function getDayExercises(dayIndex){
+  const occ = occurrenceIndex(dayIndex); // 1..15
+  if(dayType(dayIndex) === 'A'){
+    return [
+      { key: 'legraises',   label: 'Leg Raises',   unit: 'reps', default: repProgression(occ, A_OCCURRENCES) },
+      { key: 'sidebridges', label: 'Side Bridges',  unit: 'reps', perSide: true, default: repProgression(occ, A_OCCURRENCES) }
+    ];
+  }
+  return [
+    { key: 'plank', label: 'Elbow Plank Hold', unit: 'sec', default: holdProgression(occ, B_OCCURRENCES) }
+  ];
+}
+function repProgression(occ, total){
+  // linear 20 -> 35 total reps, rounded to nearest 1
+  const t = (occ - 1) / (total - 1);
+  return Math.round(20 + t * 15);
+}
+function holdProgression(occ, total){
+  // linear 50s -> 120s elbow plank hold, rounded to nearest 5
+  const t = (occ - 1) / (total - 1);
+  return Math.round((50 + t * 70) / 5) * 5;
+}
+
+function dateForDay(dayIndex){
+  const d = new Date(START_DATE);
+  d.setDate(d.getDate() + (dayIndex - 1));
+  return d;
+}
+function fmtDate(d){
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+function todayDayIndex(){
+  const now = new Date();
+  const start = new Date(START_DATE.getFullYear(), START_DATE.getMonth(), START_DATE.getDate());
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((t - start) / 86400000) + 1;
+  return Math.min(Math.max(diff, 1), TOTAL_DAYS);
+}
+
+let state = {
+  targets: {},   // { "1": {crunches:10, legraises:10, sidebridges:10}, ... }
+  completed: {}, // { "1": true }
+  notes: {},     // { "1": "felt good" }
+  bannerDismissed: false
+};
+
+function buildDefaultTargets(){
+  const t = {};
+  for(let i=1;i<=TOTAL_DAYS;i++){
+    t[i] = {};
+    getDayExercises(i).forEach(ex => t[i][ex.key] = ex.default);
+  }
+  return t;
+}
+
+async function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      state = Object.assign({ targets:{}, completed:{}, notes:{}, bannerDismissed:false }, parsed);
+    }
+  }catch(e){
+    // no saved state yet, or storage unavailable
+  }
+  if(Object.keys(state.targets).length === 0){
+    state.targets = buildDefaultTargets();
+    saveState();
+  }
+}
+
+function saveState(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }catch(e){
+    console.error('Save failed', e);
+  }
+}
+
+function computeStreak(){
+  let streak = 0;
+  const today = todayDayIndex();
+  for(let i = today; i >= 1; i--){
+    if(state.completed[i]){ streak++; } else { break; }
+  }
+  return streak;
+}
+function computeDone(){
+  return Object.values(state.completed).filter(Boolean).length;
+}
+
+function render(){
+  const today = todayDayIndex();
+
+  document.getElementById('statDone').textContent = computeDone();
+  document.getElementById('statStreak').textContent = computeStreak();
+  document.getElementById('statToday').textContent = today;
+  document.getElementById('trackLabel').textContent = computeDone() + ' / ' + TOTAL_DAYS;
+
+  // track
+  const track = document.getElementById('track');
+  track.innerHTML = '';
+  for(let i=1;i<=TOTAL_DAYS;i++){
+    const t = document.createElement('div');
+    t.className = 'tick' + (state.completed[i] ? ' done' : '') + (i === today ? ' today' : '');
+    t.title = 'Day ' + i + ' — ' + fmtDate(dateForDay(i));
+    t.addEventListener('click', () => toggleDay(i));
+    track.appendChild(t);
+  }
+
+  // banner
+  document.getElementById('banner').classList.toggle('hidden', !!state.bannerDismissed);
+
+  // today card
+  document.getElementById('todaySlot').innerHTML = '';
+  document.getElementById('todaySlot').appendChild(renderTodayCard(today));
+
+  // day list
+  const list = document.getElementById('dayList');
+  list.innerHTML = '';
+  for(let i=1;i<=TOTAL_DAYS;i++){
+    list.appendChild(renderDayRow(i, today));
+  }
+}
+
+function summaryText(i){
+  return getDayExercises(i).map(ex => {
+    const v = state.targets[i][ex.key];
+    const unit = ex.unit === 'sec' ? 's' : '';
+    return v + unit + ' ' + ex.label.toLowerCase();
+  }).join(' · ');
+}
+
+function renderTodayCard(today){
+  const card = document.createElement('div');
+  card.className = 'today-card';
+  const d = dateForDay(today);
+
+  const dateLine = document.createElement('div');
+  dateLine.className = 'date-line';
+  dateLine.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  card.appendChild(dateLine);
+
+  const h2 = document.createElement('h2');
+  h2.innerHTML = 'Day ' + today + ' <span class="d">of ' + TOTAL_DAYS + '</span>';
+  card.appendChild(h2);
+
+  const kind = document.createElement('div');
+  kind.className = 'today-kind';
+  kind.textContent = dayType(today) === 'A' ? 'Leg raises + side bridges' : 'Elbow plank hold';
+  card.appendChild(kind);
+
+  getDayExercises(today).forEach(ex => {
+    const row = document.createElement('div');
+    row.className = 'ex-row';
+
+    const name = document.createElement('div');
+    name.className = 'ex-name';
+    name.textContent = ex.label;
+    row.appendChild(name);
+
+    const hint = document.createElement('div');
+    hint.className = 'ex-hint';
+    hint.textContent = ex.perSide
+      ? ('≈' + Math.round(state.targets[today][ex.key]/2) + '/side')
+      : (ex.unit === 'sec' ? 'seconds' : 'reps');
+    row.appendChild(hint);
+
+    const input = document.createElement('input');
+    input.className = 'ex-input';
+    input.type = 'number';
+    input.min = '0';
+    input.value = state.targets[today][ex.key];
+    input.addEventListener('change', (e) => {
+      state.targets[today][ex.key] = parseInt(e.target.value) || 0;
+      saveState();
+      render();
+    });
+    row.appendChild(input);
+
+    card.appendChild(row);
+  });
+
+  const btn = document.createElement('button');
+  btn.className = 'mark-done' + (state.completed[today] ? ' is-done' : '');
+  btn.textContent = state.completed[today] ? '✓ Done for today' : 'Mark today done';
+  btn.addEventListener('click', () => toggleDay(today));
+  card.appendChild(btn);
+
+  const note = document.createElement('textarea');
+  note.className = 'note';
+  note.placeholder = 'Notes — how it felt, reps actually done...';
+  note.value = state.notes[today] || '';
+  note.addEventListener('change', (e) => {
+    state.notes[today] = e.target.value;
+    saveState();
+  });
+  card.appendChild(note);
+
+  return card;
+}
+
+function renderDayRow(i, today){
+  const day = document.createElement('div');
+  day.className = 'day' + (state.completed[i] ? ' is-done' : '') + (i === today ? ' is-today' : '');
+
+  const head = document.createElement('div');
+  head.className = 'day-head';
+
+  const num = document.createElement('div');
+  num.className = 'day-num';
+  num.textContent = 'DAY ' + i;
+  head.appendChild(num);
+
+  const date = document.createElement('div');
+  date.className = 'day-date';
+  date.textContent = fmtDate(dateForDay(i));
+  head.appendChild(date);
+
+  const badge = document.createElement('div');
+  badge.className = 'day-badge';
+  badge.textContent = dayType(i) === 'A' ? 'REPS' : 'PLANK';
+  head.appendChild(badge);
+
+  const summary = document.createElement('div');
+  summary.className = 'day-summary';
+  summary.textContent = summaryText(i);
+  head.appendChild(summary);
+
+  const check = document.createElement('div');
+  check.className = 'day-check';
+  check.textContent = '✓';
+  head.appendChild(check);
+
+  head.addEventListener('click', (e) => {
+    day.classList.toggle('expanded');
+  });
+
+  const body = document.createElement('div');
+  body.className = 'day-body';
+
+  getDayExercises(i).forEach(ex => {
+    const row = document.createElement('div');
+    row.className = 'ex-row';
+    const name = document.createElement('div');
+    name.className = 'ex-name';
+    name.textContent = ex.label;
+    row.appendChild(name);
+
+    const hint = document.createElement('div');
+    hint.className = 'ex-hint';
+    hint.textContent = ex.perSide
+      ? ('≈' + Math.round(state.targets[i][ex.key]/2) + '/side')
+      : (ex.unit === 'sec' ? 'seconds' : 'reps');
+    row.appendChild(hint);
+
+    const input = document.createElement('input');
+    input.className = 'ex-input';
+    input.type = 'number';
+    input.min = '0';
+    input.value = state.targets[i][ex.key];
+    input.addEventListener('click', (e) => e.stopPropagation());
+    input.addEventListener('change', (e) => {
+      state.targets[i][ex.key] = parseInt(e.target.value) || 0;
+      saveState();
+      render();
+    });
+    row.appendChild(input);
+    body.appendChild(row);
+  });
+
+  const btn = document.createElement('button');
+  btn.className = 'mark-done' + (state.completed[i] ? ' is-done' : '');
+  btn.textContent = state.completed[i] ? '✓ Done' : 'Mark done';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleDay(i);
+  });
+  body.appendChild(btn);
+
+  const note = document.createElement('textarea');
+  note.className = 'note';
+  note.placeholder = 'Notes...';
+  note.value = state.notes[i] || '';
+  note.addEventListener('click', (e) => e.stopPropagation());
+  note.addEventListener('change', (e) => {
+    state.notes[i] = e.target.value;
+    saveState();
+  });
+  body.appendChild(note);
+
+  day.appendChild(head);
+  day.appendChild(body);
+  return day;
+}
+
+function toggleDay(i){
+  state.completed[i] = !state.completed[i];
+  saveState();
+  render();
+}
+
+document.getElementById('dismissBanner').addEventListener('click', () => {
+  state.bannerDismissed = true;
+  saveState();
+  render();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if(confirm('Reset all progress and notes? Rep targets you edited will be kept.')){
+    state.completed = {};
+    state.notes = {};
+    saveState();
+    render();
+  }
+});
+
+// ---------- Sync code (manual cross-device transfer) ----------
+const syncPanel = document.getElementById('syncPanel');
+const syncText = document.getElementById('syncText');
+const syncTitle = document.getElementById('syncTitle');
+const syncDesc = document.getElementById('syncDesc');
+const syncActionBtn = document.getElementById('syncActionBtn');
+const syncStatus = document.getElementById('syncStatus');
+let syncMode = 'get'; // 'get' or 'load'
+
+function encodeState(){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+}
+function decodeState(code){
+  return JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+}
+
+function openSyncPanel(mode){
+  syncMode = mode;
+  syncStatus.textContent = '';
+  syncStatus.classList.remove('error');
+  if(mode === 'get'){
+    syncTitle.textContent = 'Your sync code';
+    syncDesc.textContent = 'Copy this code, then paste it into "Load sync code" on your other device.';
+    syncText.value = encodeState();
+    syncText.readOnly = true;
+    syncActionBtn.textContent = 'Copy to clipboard';
+  } else {
+    syncTitle.textContent = 'Load sync code';
+    syncDesc.textContent = 'Paste a code generated on your other device. This replaces all progress on this device.';
+    syncText.value = '';
+    syncText.readOnly = false;
+    syncActionBtn.textContent = 'Apply code';
+  }
+  syncPanel.classList.remove('hidden');
+  syncText.focus();
+}
+function closeSyncPanel(){
+  syncPanel.classList.add('hidden');
+}
+
+document.getElementById('syncGetBtn').addEventListener('click', () => openSyncPanel('get'));
+document.getElementById('syncLoadBtn').addEventListener('click', () => openSyncPanel('load'));
+document.getElementById('syncCloseBtn').addEventListener('click', closeSyncPanel);
+syncPanel.addEventListener('click', (e) => { if(e.target === syncPanel) closeSyncPanel(); });
+
+syncActionBtn.addEventListener('click', async () => {
+  if(syncMode === 'get'){
+    try{
+      await navigator.clipboard.writeText(syncText.value);
+      syncStatus.classList.remove('error');
+      syncStatus.textContent = 'Copied. Paste it on your other device.';
+    }catch(e){
+      syncText.select();
+      syncStatus.classList.remove('error');
+      syncStatus.textContent = 'Select the text above and copy it manually.';
+    }
+  } else {
+    try{
+      const parsed = decodeState(syncText.value);
+      if(!parsed || typeof parsed !== 'object' || !parsed.targets){
+        throw new Error('bad format');
+      }
+      if(confirm('This replaces all progress, notes, and edited targets on this device. Continue?')){
+        state = Object.assign({ targets:{}, completed:{}, notes:{}, bannerDismissed:false }, parsed);
+        saveState();
+        render();
+        syncStatus.classList.remove('error');
+        syncStatus.textContent = 'Loaded.';
+        setTimeout(closeSyncPanel, 700);
+      }
+    }catch(e){
+      syncStatus.classList.add('error');
+      syncStatus.textContent = "That code doesn't look right — check you copied all of it.";
+    }
+  }
+});
+
+(async function init(){
+  await loadState();
+  render();
+})();
+</script>
+</body>
+</html>
